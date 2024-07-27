@@ -11,7 +11,7 @@ setup(
     license='GPLv3',
     packages=find_packages(exclude=['results', 'scripts', 'datasets_csv', "splits"]),
     install_requires=[
-        "torch>=2.3.0",
+        "torch==2.3.0",
         "numpy==1.23.4", 
         "pandas==1.4.3",
         "h5py",

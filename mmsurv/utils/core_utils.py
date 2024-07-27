@@ -171,7 +171,7 @@ def train(datasets: tuple, cur: int, args: Namespace):
 	
 	torch.save(model.state_dict(), os.path.join(args.results_dir, "s_{}_checkpoint.pt".format(cur)))
 	if os.path.isfile(os.path.join(args.results_dir, "s_{}_minloss_checkpoint.pt".format(cur))):
-		model.load_state_dict(torch.load(os.path.join(args.results_dir, "s_{}_minloss_checkpoint.pt".format(cur))))
+		model.load_state_dict(torch.load(os.path.join(args.results_dir, "s_{}_minloss_checkpoint.pt".format(cur)), weights_only=True))
 	
 	results_val_dict, val_cindex = loop_survival(cur, epoch, model, val_loader, loss_fn, reg_fn, args.lambda_reg, model_type=args.model_type, training=False, return_summary=True, bs_micro=args.bs_micro)
 	results_test_dict, test_cindex = loop_survival(cur, epoch, model, test_loader, loss_fn, reg_fn, args.lambda_reg, model_type=args.model_type, training=False, return_summary=True, bs_micro=args.bs_micro)

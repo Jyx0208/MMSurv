@@ -200,7 +200,7 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 			path_features = []
 			for slide_id in slide_ids:
 				wsi_path = os.path.join(self.data_dir, '{}.pt'.format(slide_id.rstrip('.svs')))
-				wsi_bag = torch.load(wsi_path)
+				wsi_bag = torch.load(wsi_path, weights_only=True)
 				path_features.append(wsi_bag)
 			path_features = torch.cat(path_features, dim=0)
 			omic1 = torch.tensor(self.slide_data[self.omic_names[0]].iloc[idx])
@@ -217,7 +217,7 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 			cluster_ids = []
 			for slide_id in slide_ids:
 				wsi_path = os.path.join(self.data_dir, '{}.pt'.format(slide_id.rstrip('.svs')))
-				wsi_bag = torch.load(wsi_path)
+				wsi_bag = torch.load(wsi_path, weights_only=True)
 				path_features.append(wsi_bag)
 				cluster_ids.extend(self.fname2ids[slide_id.rstrip('.svs')])
 			path_features = torch.cat(path_features, dim=0)
@@ -230,7 +230,7 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 			path_features = []
 			for slide_id in slide_ids:
 				wsi_path = os.path.join(self.data_dir, '{}.pt'.format(slide_id.rstrip('.svs')))
-				wsi_bag = torch.load(wsi_path)
+				wsi_bag = torch.load(wsi_path, weights_only=True)
 				path_features.append(wsi_bag)
 			path_features = torch.cat(path_features, dim=0)
 		else:
