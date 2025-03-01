@@ -20,7 +20,7 @@ cd MMSurv
 Create a conda environment and install required packages.
 
 ```bash
-conda env create -n mmsurv python=3.10 -y
+conda create -n mmsurv python=3.10 -y
 conda activate mmsurv
 pip install --upgrade pip 
 pip install -e .
