@@ -66,6 +66,6 @@ dummy_slide_df = pd.DataFrame({
 })
 
 dummy_df = pd.merge(dummy_df, dummy_slide_df, on="case_id")
-dummy_df.to_csv("./datasets_csv/dummy.csv", index=False)
+dummy_df.to_csv("./datasets_csv/dummy_selected.csv", index=False)
 
 print("Dummy data generated and saved.")

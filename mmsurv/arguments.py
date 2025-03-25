@@ -26,7 +26,7 @@ def setup_argparse():
 	parser.add_argument('--selected_features',     	 action='store_true', default=False)
 	parser.add_argument('--n_classes', type=int, default=4)
 
-	parser.add_argument('--model_type',      type=str, choices=['deepset', 'amil', 'mcat', "motcat", "porpoise", "deepattnmisl"], default='porpoise', help='Type of model (Default: porpoise)')
+	parser.add_argument('--model_type',      type=str, choices=['deepset', 'amil', 'mcat', "motcat", "porpoise", "deepattnmisl", "cmta"], default='porpoise', help='Type of model (Default: porpoise)')
 	parser.add_argument('--mode',            type=str, choices=['omic', 'path', 'pathomic', 'cluster', 'coattn'], default='pathomic', help='Specifies which modalities to use / collate function in dataloader.')
 	parser.add_argument('--fusion',          type=str, choices=['None', 'concat', 'bilinear'], default='bilinear', help='Type of fusion. (Default: bilinear).')
 	parser.add_argument('--apply_sig',		 action='store_true', default=False, help='Use genomic features as signature embeddings.')

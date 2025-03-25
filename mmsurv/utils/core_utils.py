@@ -11,6 +11,7 @@ from mmsurv.models.model_set_mil import MIL_Sum_FC_surv, MIL_Attention_FC_surv, 
 from mmsurv.models.model_coattn import MCAT_Surv
 from mmsurv.models.model_motcat import MOTCAT_Surv
 from mmsurv.models.model_porpoise import PorpoiseMMF
+from mmsurv.models.model_cmta import CMTA
 from mmsurv.utils.utils import *
 
 device=torch.device("cuda" if torch.cuda.is_available() else "cpu") 
@@ -90,7 +91,9 @@ def train(datasets: tuple, cur: int, args: Namespace):
 	print("Testing on {} samples".format(len(test_split)))
 
 	print('\nInit loss function...', end=' ')
-	if args.bag_loss == 'ce_surv':
+	if args.model_type == 'cmta':
+		loss_fn = [NLLSurvLoss(alpha=args.alpha_surv), nn.L1Loss()]
+	elif args.bag_loss == 'ce_surv':
 		loss_fn = CrossEntropySurvLoss(alpha=args.alpha_surv)
 	elif args.bag_loss == 'nll_surv':
 		loss_fn = NLLSurvLoss(alpha=args.alpha_surv)
@@ -133,6 +136,14 @@ def train(datasets: tuple, cur: int, args: Namespace):
 	elif args.model_type == 'deepattnmisl':
 		model_dict = {'path_input_dim': args.path_input_dim, 'omic_input_dim': args.omic_sizes, 'fusion': args.fusion, 'num_clusters': 10, 'n_classes': args.n_classes}
 		model = MIL_Cluster_FC_surv(**model_dict)
+	elif args.model_type == 'cmta':
+		model_dict = {
+			'path_input_dim': args.path_input_dim, 
+			'omic_input_dim': args.omic_sizes, 
+			'fusion': args.fusion, 
+			'n_classes': args.n_classes
+		}
+		model = CMTA(**model_dict)
 	else:
 		raise NotImplementedError
 	
@@ -227,19 +238,27 @@ def loop_survival(
 				data_WSI, data_omic1, data_omic2, data_omic3, data_omic4, data_omic5, data_omic6, label, event_time, c = list(map(lambda x:x.to(device), data))
 				with torch.set_grad_enabled(training):
 					hazards, S, Y_hat, A  = model(x_path=data_WSI, x_omic1=data_omic1, x_omic2=data_omic2, x_omic3=data_omic3, x_omic4=data_omic4, x_omic5=data_omic5, x_omic6=data_omic6)
+				loss = loss_fn(hazards=hazards, S=S, Y=label, c=c)
 			elif model_type == "deepattnmisl":
 				cluster_id = data[0]
 				data_WSI, data_omic, label, event_time, c = list(map(lambda x:x.to(device), data[1:]))
 				if data_WSI.shape[0] > 150000:
 					continue
 				hazards, S, Y_hat =  model(x_path=data_WSI, cluster_id=cluster_id, x_omic=data_omic)
-
+				loss = loss_fn(hazards=hazards, S=S, Y=label, c=c)
+			elif model_type == "cmta":
+				data_WSI, data_omic1, data_omic2, data_omic3, data_omic4, data_omic5, data_omic6, label, event_time, c = list(map(lambda x:x.to(device), data))
+				with torch.set_grad_enabled(training):
+					hazards, S, P, P_hat, G, G_hat  = model(x_path=data_WSI, x_omic1=data_omic1, x_omic2=data_omic2, x_omic3=data_omic3, x_omic4=data_omic4, x_omic5=data_omic5, x_omic6=data_omic6)
+				sur_loss = loss_fn[0](hazards=hazards, S=S, Y=label, c=c)
+				sim_loss_P = loss_fn[1](P.detach(), P_hat)
+				sim_loss_G = loss_fn[1](G.detach(), G_hat)
+				loss = sur_loss + sim_loss_P + sim_loss_G
 			else:
 				data_WSI, data_omic, label, event_time, c = list(map(lambda x:x.to(device), data))
 				with torch.set_grad_enabled(training):
 					hazards, S = model(x_path=data_WSI, x_omic=data_omic)
-				
-			loss = loss_fn(hazards=hazards, S=S, Y=label, c=c)
+				loss = loss_fn(hazards=hazards, S=S, Y=label, c=c)
 			risk = -torch.sum(S, dim=1).detach().cpu().numpy()
 		
 		loss_value = loss.item()
@@ -287,7 +306,7 @@ def loop_survival(
 	c_index = concordance_index_censored((1-all_censorships).astype(bool), all_event_times, all_risk_scores, tied_tol=1e-08)[0]
 	if return_summary:
 		return patient_results, c_index
-	print('{} | epoch: {}, loss_surv: {:.4f}, loss: {:.4f}, train_c_index: {:.4f}\n'.format(split_name, epoch, loss_surv, running_loss, c_index))
+	print('{} | epoch: {}, loss_surv: {:.4f}, loss: {:.4f}, c_index: {:.4f}\n'.format(split_name, epoch, loss_surv, running_loss, c_index))
 	
 	if scheduler is not None:
 		last_lr = scheduler.get_last_lr()
