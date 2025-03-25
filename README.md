@@ -28,13 +28,23 @@ pip install -e .
 
 ## Usage
 
-First, extract patch coordinates and patch-level features using the CLAM library available at [CLAM GitHub](https://github.com/Mahmoodlab/CLAM). Then, run the following command:
+First, extract patch coordinates and patch-level features using the CLAM library available at [CLAM GitHub](https://github.com/Mahmoodlab/CLAM).
+
+To try it on the dummy data, run the following commands in the [mmsurv](./mmsurv) directory:
 
 ```bash
-python main.py --split_dir name_of_the_split_folder --model_type mcat --feats_dir path/to/features_directory
+python create_dummydata.py
+python save_cluster_ids.py dummy --patch_dir ./dummy_data/coords_dir/
 ```
 
-- `model_type`: Options are 'deepset', 'amil', 'deepattnmisl', 'mcat', 'motcat', 'porpoise'
+Then run the model:
+
+```bash
+python main.py --data_name dummy --feats_dir ./dummy_data/feats_dir/ --omics rna,dna,cnv --model_type porpoise
+```
+
+- `model_type`: Options are `'deepset'`, `'amil'`, `'deepattnmisl'`, `'mcat'`, `'motcat'`, `'porpoise'`  
+See [mmsurv](./mmsurv/arguments.py) for detailed configuration options.
 
 ## Acknowledgement
 
