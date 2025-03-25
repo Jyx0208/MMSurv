@@ -1,9 +1,4 @@
 import argparse
-import os
-import sys 
-import json
-from timeit import default_timer as timer
-from mmsurv.main import run
 
 def setup_argparse():
 	### Data 
@@ -31,9 +26,9 @@ def setup_argparse():
 	parser.add_argument('--selected_features',     	 action='store_true', default=False)
 	parser.add_argument('--n_classes', type=int, default=4)
 
-	parser.add_argument('--model_type',      type=str, choices=['deepset', 'amil', 'mcat', "motcat", "porpoise", "deepattnmisl"], default='mcat', help='Type of model (Default: mcat)')
-	parser.add_argument('--mode',            type=str, choices=['omic', 'path', 'pathomic', 'cluster', 'coattn'], default='coattn', help='Specifies which modalities to use / collate function in dataloader.')
-	parser.add_argument('--fusion',          type=str, choices=['None', 'concat', 'bilinear'], default='concat', help='Type of fusion. (Default: concat).')
+	parser.add_argument('--model_type',      type=str, choices=['deepset', 'amil', 'mcat', "motcat", "porpoise", "deepattnmisl"], default='porpoise', help='Type of model (Default: porpoise)')
+	parser.add_argument('--mode',            type=str, choices=['omic', 'path', 'pathomic', 'cluster', 'coattn'], default='pathomic', help='Specifies which modalities to use / collate function in dataloader.')
+	parser.add_argument('--fusion',          type=str, choices=['None', 'concat', 'bilinear'], default='bilinear', help='Type of fusion. (Default: bilinear).')
 	parser.add_argument('--apply_sig',		 action='store_true', default=False, help='Use genomic features as signature embeddings.')
 	parser.add_argument('--apply_sigfeats',  action='store_true', default=False, help='Use genomic features as tabular features.')
 	parser.add_argument('--drop_out',        action='store_true', default=True, help='Enable dropout (p=0.25)')
@@ -72,43 +67,3 @@ def setup_argparse():
 
 	args = parser.parse_args()
 	return args
-
-if __name__ == "__main__" and (__package__ is None or __package__ == ''):
-	script_dir = os.path.dirname(os.path.abspath(__file__))
-	sys.path.append(os.path.dirname(script_dir))
-	args = setup_argparse()
-	if args.run_config_file:
-		new_run_name = args.run_name
-		results_dir = args.results_dir
-		feats_dir = args.feats_dir
-		cv_fold = args.k
-		max_epochs = args.max_epochs
-		with open(args.run_config_file, "r") as f:
-			config = json.load(f)
-		
-		parser = argparse.ArgumentParser()
-		parser.add_argument("--run_config_file")
-		for k, v in config.items():
-			if k != "run_config_file":
-				parser.add_argument('--' + k, default=v, type=type(v))
-		args = parser.parse_args()
-		args.run_name = new_run_name
-		args.feats_dir = feats_dir
-		args.results_dir = results_dir
-		args.k = cv_fold
-		args.max_epochs = max_epochs
-		args.split_dir = args.split_dir.split("/")[-1]
-		start = timer()
-		run(args)
-		end = timer()
-		print("finished!")
-		print("end script")
-		print('Script Time: %f seconds' % (end - start))
-	else:
-		start = timer()
-		run(args)
-		end = timer()
-		print("finished!")
-		print("end script")
-		print('Script Time: %f seconds' % (end - start))
-	

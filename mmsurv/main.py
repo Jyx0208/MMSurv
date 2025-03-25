@@ -92,7 +92,6 @@ def run(args):
 	
 		pd.DataFrame(results).to_csv(os.path.join(args.results_dir, 'summary_latest.csv'))
 
-
 ### Sets Seed for reproducible experiments.
 def seed_torch(seed=7):
 	import random
@@ -105,3 +104,9 @@ def seed_torch(seed=7):
 		torch.cuda.manual_seed_all(seed) # if you are using multi-GPU.
 	torch.backends.cudnn.benchmark = False
 	torch.backends.cudnn.deterministic = True
+
+if __name__ == '__main__':
+	import arguments
+	args = arguments.setup_argparse()
+	run(args)
+	
