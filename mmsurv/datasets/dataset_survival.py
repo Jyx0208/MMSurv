@@ -262,9 +262,12 @@ class Generic_Split(MIL_Survival_Dataset):
 		self.patient_dict = patient_dict
 		self.time_breaks = time_breaks
 		self.print_info = print_info
-		with open(cluster_id_path, 'rb') as handle:
-			self.fname2ids = pickle.load(handle)
-	
+		if os.path.exists(cluster_id_path):
+			with open(cluster_id_path, 'rb') as handle:
+				self.fname2ids = pickle.load(handle)
+		else:
+			print("Cluster ID path not found.")
+
 		self.slide_cls_ids = [[] for i in range(num_classes)]
 		for i in range(num_classes):
 			self.slide_cls_ids[i] = np.where(self.slide_data['label'] == i)[0]
