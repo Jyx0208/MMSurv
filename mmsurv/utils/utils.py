@@ -405,8 +405,12 @@ def check_directories(args):
 			args.path_input_dim = 2048 
 		elif feat_extractor in ["PLIP", "CONCH"]:
 			args.path_input_dim = 512 
-		elif feat_extractor == "UNI":
+		elif feat_extractor in ["UNI", "SSL2"]:
 			args.path_input_dim = 1024
+		elif feat_extractor == "HOPT":
+			args.path_input_dim = 1536
+		elif feat_extractor == "VIRCHOW":
+			args.path_input_dim = 2560
 		else:
 			args.path_input_dim = 768
 
