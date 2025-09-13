@@ -27,13 +27,17 @@ def get_data(args):
 				cli_cols = remove_cols.pop("cli")
 				print("\tcli", len(cli_cols))
 				indep_vars.extend(cli_cols)
-			df = df[[i for i in df.columns if i not in list(chain(*remove_cols.values()))]]
+			# 保留重要的非omics列，但不把它们加入indep_vars  
+			keep_cols = ["case_id", "slide_id", "survival_months", "event", "censorship"]
+			df = df[[i for i in df.columns if i not in list(chain(*remove_cols.values())) or i in keep_cols]]
 			print(df.shape)
 			for g in args.omics.split(","):
 				if g != "cli":
 					gen_df = pd.read_csv(f"{args.dataset_dir}/{args.data_name}_{g}.csv.zip", compression="zip")
-					indep_vars.extend(gen_df.columns[1:])
-					print("\t", g, gen_df.shape[1]-1)
+					# 只添加omics特征到indep_vars，不包括case_id
+					omic_features = [col for col in gen_df.columns[1:] if col != 'case_id']
+					indep_vars.extend(omic_features)
+					print("\t", g, len(omic_features))
 					df = pd.merge(df, gen_df, on='case_id', how="outer")
 			df = df.reset_index(drop=True).drop(df.index[df["event"].isna()]).reset_index(drop=True)
 	args.nb_tabular_data = len(indep_vars)

@@ -61,7 +61,12 @@ class MCAT_Surv(nn.Module):
 
 	def forward(self, **kwargs):
 		x_path = kwargs['x_path']
-		x_omic = [kwargs['x_omic%d' % i] for i in range(1,7)]
+		# 动态处理组学数量
+		x_omic = []
+		for i in range(1, len(self.omic_sizes) + 1):
+			key = 'x_omic%d' % i
+			if key in kwargs:
+				x_omic.append(kwargs[key])
 
 		h_path_bag = self.wsi_net(x_path).unsqueeze(1) ### path embeddings are fed through a FC layer
 		h_omic = [self.sig_networks[idx].forward(sig_feat) for idx, sig_feat in enumerate(x_omic)] ### each omic signature goes through it's own FC layer

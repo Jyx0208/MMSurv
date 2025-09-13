@@ -13,10 +13,29 @@ slide_ids = []
 case_ids = []
 shapes = []
 
+# 创建正确的数据分割
+np.random.seed(42)  # 为了可重复性
+
+# 创建train/val/test分割
+train_size = int(num_patients * 0.7)
+val_size = int(num_patients * 0.15) 
+test_size = num_patients - train_size - val_size
+
+# 随机分割患者ID
+all_patients = list(range(num_patients))
+np.random.shuffle(all_patients)
+
+train_patients = all_patients[:train_size]
+val_patients = all_patients[train_size:train_size + val_size]
+test_patients = all_patients[train_size + val_size:]
+
+# 创建分割DataFrame，每行一个患者
+max_split_size = max(len(train_patients), len(val_patients), len(test_patients))
+
 dummy_split = pd.DataFrame({
-    "train": list(np.random.randint(0, num_patients, int(num_patients*0.8))),
-    "val": list(np.random.randint(0, num_patients, int(num_patients*0.2))) + [pd.NA] * int(num_patients*0.6),
-    "test": list(np.random.randint(0, num_patients, int(num_patients*0.2))) + [pd.NA] * int(num_patients*0.6)
+    "train": train_patients + [pd.NA] * (max_split_size - len(train_patients)),
+    "val": val_patients + [pd.NA] * (max_split_size - len(val_patients)),
+    "test": test_patients + [pd.NA] * (max_split_size - len(test_patients))
 })
 os.makedirs("./datasets_csv/", exist_ok=True)
 os.makedirs("./splits/dummy/", exist_ok=True)
@@ -34,12 +53,23 @@ dummy_rna_df["case_id"] = np.arange(num_patients)
 dummy_df = pd.merge(dummy_df, dummy_rna_df, on="case_id")
 
 dummy_dna_df = pd.DataFrame({f"dummy{i}_dna": np.random.randn(num_patients,) for i in range(10)})
-dummy_dna_df["case_id"] = np.arange(num_patients)
+dummy_dna_df["case_id"] = np.arange(num_patients)  
 dummy_df = pd.merge(dummy_df, dummy_dna_df, on="case_id")
 
 dummy_cnv_df = pd.DataFrame({f"dummy{i}_cnv": np.random.randn(num_patients,) for i in range(15)})
 dummy_cnv_df["case_id"] = np.arange(num_patients)
 dummy_df = pd.merge(dummy_df, dummy_cnv_df, on="case_id")
+
+# 添加病理组学数据
+dummy_path_df = pd.DataFrame({f"dummy{i}_pat": np.random.randn(num_patients,) for i in range(20)})  # 20维病理特征
+dummy_path_df["case_id"] = np.arange(num_patients)
+dummy_df = pd.merge(dummy_df, dummy_path_df, on="case_id")
+
+# 确保没有重复的列
+dummy_df = dummy_df.loc[:, ~dummy_df.columns.duplicated()]
+
+# 保存单独的病理数据文件
+dummy_path_df.to_csv("./datasets_csv/dummy_pat.csv.zip", compression="zip", index=False)
 
 for patient_id in range(num_patients):
     num_slides = np.random.randint(2, 4)

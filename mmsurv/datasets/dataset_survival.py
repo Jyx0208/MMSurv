@@ -34,6 +34,8 @@ class Generic_WSI_Survival_Dataset(Dataset):
 		slide_data = df[["case_id", "slide_id", "survival_months", "censorship"]+self.indep_vars]
 		
 		patients_df = slide_data.drop_duplicates(['case_id']).copy()
+		# 确保patients_df没有重复列
+		patients_df = patients_df.loc[:, ~patients_df.columns.duplicated()]
 
 		survival_time_list = survival_time_list if survival_time_list != [] else patients_df["survival_months"]
 		_, time_breaks = pd.qcut(survival_time_list, q=self.num_intervals, retbins=True, labels=False)
@@ -43,6 +45,9 @@ class Generic_WSI_Survival_Dataset(Dataset):
 		if self.print_info:
 			print("Time intervals: ", self.time_breaks)
 
+		# 修复重复的case_id列问题
+		slide_data = slide_data.loc[:, ~slide_data.columns.duplicated()]
+		
 		self.patient_dict = {
 			case: slide_data["slide_id"][slide_data["case_id"] == case].values \
 			for case in slide_data["case_id"].unique()
@@ -51,9 +56,11 @@ class Generic_WSI_Survival_Dataset(Dataset):
 		disc_labels, _ = pd.cut(patients_df["survival_months"], bins=self.time_breaks, retbins=True, labels=False, right=False, include_lowest=True)
 		patients_df.insert(2, 'label', disc_labels.values.astype(int))
 
-		slide_data = patients_df
+		# Merge the labels back to slide_data
+		slide_data = slide_data.merge(patients_df[['case_id', 'label']], on='case_id', how='left')
 		slide_data.reset_index(drop=True, inplace=True)
-		slide_data = slide_data.assign(slide_id=slide_data['case_id'])
+		# 再次确保没有重复列
+		slide_data = slide_data.loc[:, ~slide_data.columns.duplicated()]
 
 		label_dict = {}
 		key_count = 0
@@ -101,8 +108,21 @@ class Generic_WSI_Survival_Dataset(Dataset):
 				for i in self.omic_sizes:
 					print("\t", i)
 		else:
-			self.omic_sizes = len(self.indep_vars)
-			self.omic_names = None
+			if self.mode == "coattn":
+				# 为MCAT模型根据组学类型分组设置大小
+				self.omic_names = []
+				omic_groups = ['rna', 'dna', 'cnv', 'pat', 'cli', 'mut', 'pro']
+				for omic_type in omic_groups:
+					omic_features = [col for col in self.indep_vars if col.endswith('_' + omic_type)]
+					if omic_features:
+						self.omic_names.append(omic_features)
+				self.omic_sizes = [len(omic) for omic in self.omic_names]
+				print("OMIC SIZES:")
+				for i, size in enumerate(self.omic_sizes):
+					print(f"\t{omic_groups[i] if i < len(omic_groups) else 'other'}: {size}")
+			else:
+				self.omic_sizes = len(self.indep_vars)
+				self.omic_names = None
 
 		if print_info:
 			self.summarize()
@@ -132,7 +152,8 @@ class Generic_WSI_Survival_Dataset(Dataset):
 		split = split.dropna().reset_index(drop=True)
 
 		if len(split) > 0:
-			mask = self.slide_data['slide_id'].isin(split.tolist())
+			# 分割文件包含的是case_id，需要根据case_id筛选对应的slides
+			mask = self.slide_data['case_id'].isin(split.tolist())
 			df_slice = self.slide_data[mask].reset_index(drop=True)
 			split = Generic_Split(df_slice, self.time_breaks, self.indep_vars, self.mode, self.data_dir, self.cluster_id_path, patient_dict=self.patient_dict, print_info=self.print_info, num_classes=self.num_classes, signatures=self.signatures, omic_sizes=self.omic_sizes, omic_names=self.omic_names)
 		else:
@@ -190,7 +211,7 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 		self.cluster_id_path = cluster_id_path
 
 	def __getitem__(self, idx):
-		case_id = self.slide_data['case_id'][idx]
+		case_id = int(self.slide_data['case_id'][idx])  # 确保case_id是整数类型
 		label = torch.tensor(self.slide_data['disc_label'][idx])
 		event_time = torch.tensor(self.slide_data["survival_months"][idx])
 		c = torch.tensor(self.slide_data['censorship'][idx])
@@ -203,14 +224,18 @@ class MIL_Survival_Dataset(Generic_WSI_Survival_Dataset):
 				wsi_bag = torch.load(wsi_path, weights_only=True)
 				path_features.append(wsi_bag)
 			path_features = torch.cat(path_features, dim=0)
-			omic1 = torch.tensor(self.slide_data[self.omic_names[0]].iloc[idx])
-			omic2 = torch.tensor(self.slide_data[self.omic_names[1]].iloc[idx])
-			omic3 = torch.tensor(self.slide_data[self.omic_names[2]].iloc[idx])
-			omic4 = torch.tensor(self.slide_data[self.omic_names[3]].iloc[idx])
-			omic5 = torch.tensor(self.slide_data[self.omic_names[4]].iloc[idx])
-			omic6 = torch.tensor(self.slide_data[self.omic_names[5]].iloc[idx])
 			
-			return (path_features, omic1, omic2, omic3, omic4, omic5, omic6, label, event_time, c)
+			# 动态处理不同数量的组学
+			omics = []
+			for i in range(len(self.omic_names)):
+				omic_data = torch.tensor(self.slide_data[self.omic_names[i]].iloc[idx])
+				omics.append(omic_data)
+			
+			# 如果不够6个组学，用零张量填充
+			while len(omics) < 6:
+				omics.append(torch.zeros(1))
+			
+			return (path_features, omics[0], omics[1], omics[2], omics[3], omics[4], omics[5], label, event_time, c)
 		
 		if self.mode == 'cluster':
 			path_features = []
